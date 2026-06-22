@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Admin user profile
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Setup flag — readable by all, writable only when no admin exists yet OR by admin
+    match /config/setup {
+      allow read: if true;
+      allow write: if !exists(/databases/$(database)/documents/config/setup) || isAdmin();
+    }
+
+    // Students — document ID is the access code
+    // Anyone who knows the code can read that specific document (students don't log in).
+    // Only admin can list, create, update, or delete student documents.
+    match /students/{accessCode} {
+      allow get:    if true;
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // Resources — readable by anyone (students need to load assigned resources)
+    match /resources/{resourceId} {
+      allow read: if true;
+      allow write, delete: if isAdmin();
+    }
+
+    // Student work — keyed by "{accessCode}_{resourceId}"
+    // Anyone can read/write (students save their work without logging in).
+    // Only admin can delete work.
+    match /studentWork/{workId} {
+      allow read, write: if true;
+      allow delete: if isAdmin();
+    }
+  }
+}

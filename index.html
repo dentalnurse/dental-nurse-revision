@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dental Nurse Revision</title>
+  <meta name="description" content="Your personalised dental nurse revision workbook">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+</head>
+<body class="landing-page">
+
+  <div class="landing-container">
+
+    <div class="landing-logo-wrap">
+      <img src="assets/logo.png" alt="Dental Nurse Revision" class="landing-logo-img">
+      <p class="landing-tagline">Your personal revision hub</p>
+    </div>
+
+    <div class="landing-card">
+      <h2>Welcome back!</h2>
+      <p class="sub">Enter your access code to open your personalised workbook.</p>
+
+      <div id="access-error" class="alert alert-error hidden"></div>
+
+      <div class="form-group">
+        <label for="accessCode">Your Access Code</label>
+        <input
+          type="text"
+          id="accessCode"
+          class="code-input"
+          placeholder="e.g. AB3K7PQR"
+          maxlength="12"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+        >
+      </div>
+
+      <button id="openBtn" class="btn btn-primary btn-lg w-full" onclick="openWorkbook()">
+        Open My Workbook
+      </button>
+    </div>
+
+    <footer class="landing-footer">
+      <a href="admin.html">Admin login</a>
+    </footer>
+
+  </div>
+
+  <script type="module">
+    import { db } from './js/firebase-config.js';
+    import {
+      doc, getDoc
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const input = document.getElementById('accessCode');
+    const btn   = document.getElementById('openBtn');
+    const err   = document.getElementById('access-error');
+
+    // Allow Enter key
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') openWorkbook(); });
+
+    // Auto-uppercase as user types
+    input.addEventListener('input', () => {
+      const pos = input.selectionStart;
+      input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      input.setSelectionRange(pos, pos);
+    });
+
+    window.openWorkbook = async function () {
+      const code = input.value.trim().toUpperCase();
+      if (!code) {
+        showError('Please enter your access code.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Checking…';
+      err.classList.add('hidden');
+
+      try {
+        const snap = await getDoc(doc(db, 'students', code));
+        if (snap.exists()) {
+          window.location.href = `student.html?code=${encodeURIComponent(code)}`;
+        } else {
+          showError('Access code not found. Please double-check and try again.');
+          btn.disabled = false;
+          btn.textContent = 'Open My Workbook';
+        }
+      } catch (e) {
+        console.error(e);
+        showError('Something went wrong. Please try again in a moment.');
+        btn.disabled = false;
+        btn.textContent = 'Open My Workbook';
+      }
+    };
+
+    function showError(msg) {
+      err.textContent = msg;
+      err.classList.remove('hidden');
+      input.focus();
+    }
+
+    // Auto-open if code is in URL (?code=XXXX or #XXXX)
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get('code') || window.location.hash.replace('#', '');
+    if (codeParam) {
+      input.value = codeParam.toUpperCase();
+      openWorkbook();
+    }
+  </script>
+
+</body>
+</html>

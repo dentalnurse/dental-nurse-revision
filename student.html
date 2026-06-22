@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Workbook — Dental Nurse Revision</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="assets/logo.png" type="image/png">
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen" class="loading-screen">
+  <div class="spinner spinner-lg"></div>
+  <p>Opening your workbook…</p>
+</div>
+
+<!-- Error (invalid code) -->
+<div id="error-screen" class="loading-screen hidden">
+  <img src="assets/logo.png" alt="" style="width:80px;margin-bottom:16px;opacity:0.7;">
+  <h2 style="font-family:var(--font-display);margin-bottom:8px;">Workbook not found</h2>
+  <p class="text-sm text-muted" style="max-width:300px;text-align:center;margin-bottom:24px;">
+    This access code doesn't match any workbook. Please check the link you were sent.
+  </p>
+  <a href="index.html" class="btn btn-primary">Try a different code</a>
+</div>
+
+<!-- Main student app -->
+<div id="app" class="student-app hidden">
+
+  <header class="student-header">
+    <a href="index.html" class="logo" style="flex-shrink:0;">
+      <img src="assets/logo.png" alt="" class="logo-mark">
+      <span class="logo-text">Dental Nurse<br>Revision</span>
+    </a>
+    <div class="student-greeting" style="flex:1;text-align:center;">
+      <div class="greet-name" id="greet-name">Your Workbook</div>
+      <div class="greet-sub" id="greet-sub">Welcome back!</div>
+    </div>
+    <div class="student-tabs" style="flex-shrink:0;">
+      <button class="tab-btn active" id="tab-resources-btn" onclick="switchTab('resources')">Resources</button>
+      <button class="tab-btn" id="tab-timetable-btn" onclick="switchTab('timetable')">Timetable</button>
+    </div>
+  </header>
+
+  <div class="student-content">
+
+    <!-- Resources tab -->
+    <div id="tab-resources">
+      <!-- Resource list view -->
+      <div id="resources-list-view">
+        <div id="resources-grid" class="resource-grid"></div>
+        <div id="resources-empty" class="empty-state hidden">
+          <div class="empty-state-icon">📖</div>
+          <h3>No resources yet</h3>
+          <p>Your tutor hasn't assigned any resources to your workbook yet. Check back soon!</p>
+        </div>
+      </div>
+
+      <!-- Resource viewer (open one resource) -->
+      <div id="resource-viewer-view" class="hidden">
+        <div style="margin-bottom:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="backToList()" style="padding-left:4px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Resources
+          </button>
+        </div>
+
+        <div class="resource-viewer">
+          <div class="rv-header">
+            <div>
+              <div id="rv-badge"></div>
+              <h2 class="rv-title mt-2" id="rv-title"></h2>
+              <p class="rv-desc" id="rv-desc"></p>
+            </div>
+          </div>
+
+          <div class="rv-body" id="rv-body">
+            <!-- Filled in by JS -->
+          </div>
+
+          <div class="rv-footer">
+            <div class="save-status" id="save-status">Not saved yet</div>
+            <button class="btn btn-primary" id="save-btn" onclick="saveWork()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Work
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timetable tab -->
+    <div id="tab-timetable" class="hidden">
+      <div id="timetable-view" class="timetable-view"></div>
+      <div id="timetable-empty" class="empty-state hidden">
+        <div class="empty-state-icon">🗓️</div>
+        <h3>No timetable yet</h3>
+        <p>Your tutor hasn't set up your revision timetable yet. Check back soon!</p>
+      </div>
+    </div>
+
+  </div><!-- /student-content -->
+</div><!-- /student-app -->
+
+<script type="module" src="js/student.js"></script>
+</body>
+</html>
