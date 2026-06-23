@@ -20,6 +20,13 @@ let timetableRows = [];   // live timetable rows for editing
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+const ADMIN_LEARNING_STYLE_DATA = {
+  visual:      { label: 'Visual',           emoji: '👁️', adminHint: 'Assign mind map templates, diagram worksheets, and image-based resources. Colour-coded layouts work especially well.' },
+  auditory:    { label: 'Auditory',         emoji: '👂', adminHint: 'Assign written resources they can read aloud as prompts. Reflection sheets where they summarise topics in their own words are effective.' },
+  reading:     { label: 'Reading/Writing',  emoji: '✍️', adminHint: 'Assign text-based worksheets, glossary templates, and long-answer question sheets. Written summaries suit this student best.' },
+  kinesthetic: { label: 'Kinesthetic',      emoji: '🤲', adminHint: 'Assign self-testing flashcard templates, checkbox lists, and fill-in activities. Short bursts of active recall work best for this learner.' },
+};
+
 // ── Bootstrap ───────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   try {
@@ -269,6 +276,31 @@ window.openStudentDetail = async (code) => {
   // Load timetable
   timetableRows = [...(s.timetable || [])];
   renderTimetableEditor();
+
+  // Load student profile
+  if (g('detail-learning-style')) g('detail-learning-style').value = s.learningStyle || '';
+  const lf = s.lifestyle || {};
+  if (g('detail-hours-week'))    g('detail-hours-week').value    = lf.hoursPerWeek || '';
+  if (g('detail-best-time'))     g('detail-best-time').value     = lf.bestTime || 'both';
+  if (g('detail-stress-level'))  g('detail-stress-level').value  = lf.stressLevel || '3';
+  if (g('detail-lifestyle-notes')) g('detail-lifestyle-notes').value = lf.lifestyleNotes || '';
+
+  // Load existing quiz results
+  if (g('quiz-preview')) g('quiz-preview').innerHTML = '';
+  if (g('quiz-clear-btn')) g('quiz-clear-btn').style.display = 'none';
+  if (s.quizResults && s.quizResults.length) {
+    renderQuizPreview(s.quizResults);
+    if (g('quiz-paste-area')) {
+      g('quiz-paste-area').value = s.quizResults.map(r =>
+        r.score !== null ? `${r.topic} – ${r.score}%${r.date ? ' ' + r.date : ''}` : r.topic
+      ).join('\n');
+    }
+  } else if (g('quiz-paste-area')) {
+    g('quiz-paste-area').value = '';
+  }
+
+  // Show recommendations panel
+  renderAdminRecommendations(s);
 };
 
 window.copyCode = () => copyTextToClipboard(g('detail-code').textContent, 'Access code copied!');
@@ -593,6 +625,139 @@ function confirmDelete(title, body, onConfirm) {
     await onConfirm();
   };
   openModal('modal-confirm');
+}
+
+// ── Student Profile & Quiz Results ───────────────────────────
+
+function parseQuizText(text) {
+  return text.split('\n')
+    .map(l => l.trim()).filter(l => l.length > 0)
+    .map(line => {
+      const scoreMatch = line.match(/[–\-]\s*(\d+(?:\.\d+)?)\s*%/);
+      const dateMatch  = line.match(/(\d{1,2}[\./]\d{1,2}[\./]\d{2,4})\s*$/);
+      const topic = line
+        .replace(/^\d+\s*[\.\)]\s*/, '')
+        .replace(/\s*[–\-]\s*\d+(?:\.\d+)?\s*%.*$/, '')
+        .replace(/\s+\d{1,2}[\./]\d{1,2}[\./]\d{2,4}\s*$/, '')
+        .trim();
+      if (!topic) return null;
+      return { topic, score: scoreMatch ? parseFloat(scoreMatch[1]) : null, date: dateMatch ? dateMatch[1] : null, completed: scoreMatch !== null };
+    })
+    .filter(Boolean);
+}
+
+window.parseAndPreviewQuiz = () => {
+  const ta = g('quiz-paste-area');
+  if (!ta || !ta.value.trim()) return;
+  renderQuizPreview(parseQuizText(ta.value));
+};
+
+window.clearQuizPreview = () => {
+  g('quiz-paste-area').value = '';
+  g('quiz-preview').innerHTML = '';
+  g('quiz-clear-btn').style.display = 'none';
+};
+
+function renderQuizPreview(results) {
+  const el = g('quiz-preview');
+  if (!results || !results.length) {
+    el.innerHTML = '<p class="text-sm text-muted">No results could be parsed — include "– XX%" scores after each topic.</p>';
+    return;
+  }
+  const notDone = results.filter(r => !r.completed);
+  const weak    = results.filter(r => r.completed && r.score < 90);
+  const good    = results.filter(r => r.completed && r.score >= 90);
+
+  el.innerHTML = `
+    <div class="quiz-preview-table">
+      ${results.map(r => {
+        const cls   = !r.completed ? 'qr-badge-missing' : r.score < 80 ? 'qr-badge-weak' : r.score < 90 ? 'qr-badge-mid' : 'qr-badge-good';
+        const label = !r.completed ? 'Not done' : `${r.score}%`;
+        return `<div class="qr-row"><span class="qr-topic">${esc(r.topic)}</span><span class="qr-badge ${cls}">${label}</span></div>`;
+      }).join('')}
+    </div>
+    <div class="quiz-summary mt-3">
+      ${notDone.length ? `<span class="qr-summary-item qr-summary-missing">${notDone.length} not done</span>` : ''}
+      ${weak.length    ? `<span class="qr-summary-item qr-summary-weak">${weak.length} below 90%</span>` : ''}
+      ${good.length    ? `<span class="qr-summary-item qr-summary-good">${good.length} at 90%+</span>` : ''}
+    </div>
+    <button class="btn btn-primary btn-sm mt-4" onclick="saveQuizResults()">Save Quiz Results</button>`;
+  const clearBtn = g('quiz-clear-btn');
+  if (clearBtn) clearBtn.style.display = '';
+}
+
+window.saveStudentProfile = async () => {
+  const learningStyle  = g('detail-learning-style')?.value || '';
+  const hoursPerWeek   = parseInt(g('detail-hours-week')?.value) || 0;
+  const bestTime       = g('detail-best-time')?.value || 'both';
+  const stressLevel    = parseInt(g('detail-stress-level')?.value) || 3;
+  const lifestyleNotes = g('detail-lifestyle-notes')?.value || '';
+  try {
+    await updateDoc(doc(db, 'students', currentStudentCode), {
+      learningStyle, lifestyle: { hoursPerWeek, bestTime, stressLevel, lifestyleNotes }
+    });
+    const msg = g('profile-save-msg');
+    if (msg) { show('profile-save-msg'); setTimeout(() => hide('profile-save-msg'), 2500); }
+    const snap = await getDoc(doc(db, 'students', currentStudentCode));
+    renderAdminRecommendations(snap.data());
+  } catch(e) { console.error(e); flashMessage('Save failed — please try again'); }
+};
+
+window.saveQuizResults = async () => {
+  const ta = g('quiz-paste-area');
+  if (!ta || !ta.value.trim()) return;
+  const results = parseQuizText(ta.value);
+  if (!results.length) { flashMessage('No results to save — check the format.'); return; }
+  try {
+    await updateDoc(doc(db, 'students', currentStudentCode), { quizResults: results });
+    flashMessage(`${results.length} quiz results saved!`);
+    const snap = await getDoc(doc(db, 'students', currentStudentCode));
+    renderAdminRecommendations(snap.data());
+  } catch(e) { console.error(e); flashMessage('Save failed — please try again'); }
+};
+
+function renderAdminRecommendations(s) {
+  const quiz = s.quizResults || [];
+  const ls   = ADMIN_LEARNING_STYLE_DATA[s.learningStyle];
+  if (!quiz.length && !ls) { hide('admin-plan-card'); return; }
+  show('admin-plan-card');
+
+  const notDone = quiz.filter(r => !r.completed);
+  const weak    = quiz.filter(r => r.completed && r.score < 90).sort((a,b) => a.score - b.score);
+  const strong  = quiz.filter(r => r.completed && r.score >= 90);
+
+  g('admin-plan-content').innerHTML = `
+    ${ls ? `<div class="plan-rec-section">
+      <div class="plan-rec-label">Learning Style</div>
+      <div class="plan-rec-body">${ls.emoji} <strong>${ls.label}</strong> — ${ls.adminHint}</div>
+    </div>` : ''}
+    ${quiz.length ? `
+      <div class="plan-rec-section">
+        <div class="plan-rec-label">Topics at a Glance</div>
+        <div class="plan-stat-row">
+          <div class="plan-stat ${notDone.length ? 'plan-stat-bad' : 'plan-stat-good'}">
+            <div class="plan-stat-val">${notDone.length}</div><div class="plan-stat-lbl">Not done</div>
+          </div>
+          <div class="plan-stat ${weak.length ? 'plan-stat-warn' : 'plan-stat-good'}">
+            <div class="plan-stat-val">${weak.length}</div><div class="plan-stat-lbl">Below 90%</div>
+          </div>
+          <div class="plan-stat plan-stat-good">
+            <div class="plan-stat-val">${strong.length}</div><div class="plan-stat-lbl">At 90%+</div>
+          </div>
+        </div>
+      </div>
+      ${notDone.length || weak.length ? `
+        <div class="plan-rec-section">
+          <div class="plan-rec-label">Priority Topics — assign resources to these areas</div>
+          <div class="quiz-preview-table">
+            ${[...notDone, ...weak].map(r => `
+              <div class="qr-row">
+                <span class="qr-topic">${esc(r.topic)}</span>
+                <span class="qr-badge ${!r.completed ? 'qr-badge-missing' : r.score < 80 ? 'qr-badge-weak' : 'qr-badge-mid'}">${!r.completed ? 'Not done' : r.score+'%'}</span>
+              </div>`).join('')}
+          </div>
+        </div>` : `<div class="plan-rec-section"><p class="text-sm" style="color:var(--success);font-weight:600;">All topics at 90%+ — this student is performing very well!</p></div>`}
+    ` : ''}`;
 }
 
 // ── Utility functions ─────────────────────────────────────────

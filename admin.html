@@ -217,17 +217,91 @@
         </div>
 
         <!-- Timetable -->
-        <div class="card">
+        <div class="card mb-6">
           <div class="card-header">
             <span class="card-title">Revision Timetable</span>
             <button class="btn btn-primary btn-sm" onclick="addTimetableRow()">+ Add Entry</button>
           </div>
           <div id="timetable-editor"></div>
-          <div class="mt-4">
+          <div class="mt-4 flex items-center gap-2">
             <button class="btn btn-primary" onclick="saveTimetable()">Save Timetable</button>
-            <span id="timetable-save-msg" class="text-sm text-muted ml-2 hidden">Saved!</span>
+            <span id="timetable-save-msg" class="text-sm text-muted hidden">✓ Saved!</span>
           </div>
         </div>
+
+        <!-- Student Profile -->
+        <div class="card mb-6">
+          <div class="card-header">
+            <span class="card-title">Student Profile</span>
+          </div>
+          <div class="profile-grid">
+            <div class="form-group">
+              <label for="detail-learning-style">Learning Style</label>
+              <select id="detail-learning-style">
+                <option value="">— Not set —</option>
+                <option value="visual">Visual — images, diagrams, colour-coding</option>
+                <option value="auditory">Auditory — listening, discussing, verbal repetition</option>
+                <option value="reading">Reading/Writing — notes, lists, writing things out</option>
+                <option value="kinesthetic">Kinesthetic — doing, practice, hands-on</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="detail-hours-week">Study Hours Available (per week)</label>
+              <input type="number" id="detail-hours-week" min="0" max="40" placeholder="e.g. 8">
+            </div>
+            <div class="form-group">
+              <label for="detail-best-time">Best Study Time</label>
+              <select id="detail-best-time">
+                <option value="morning">Morning</option>
+                <option value="evening">Evening</option>
+                <option value="both">Flexible / Both</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="detail-stress-level">Current Stress Level</label>
+              <select id="detail-stress-level">
+                <option value="1">1 — Very relaxed</option>
+                <option value="2">2 — Mostly calm</option>
+                <option value="3">3 — Moderate</option>
+                <option value="4">4 — Quite stressed</option>
+                <option value="5">5 — Very stressed</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="detail-lifestyle-notes">Lifestyle Notes (optional)</label>
+            <textarea id="detail-lifestyle-notes" rows="2" placeholder="e.g. Works part-time, young children, long commute…"></textarea>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="btn btn-secondary btn-sm" onclick="saveStudentProfile()">Save Profile</button>
+            <span id="profile-save-msg" class="text-sm text-muted hidden">✓ Saved!</span>
+          </div>
+        </div>
+
+        <!-- Quiz Results -->
+        <div class="card mb-6">
+          <div class="card-header">
+            <span class="card-title">Quiz Results</span>
+          </div>
+          <div class="form-group">
+            <label for="quiz-paste-area">Paste quiz results — one topic per line with % scores</label>
+            <textarea id="quiz-paste-area" rows="9" placeholder="1. GDC/Legal and ethical – 97%&#10;2. Infection control – 100%&#10;3. Health &amp; Safety – 75% 14/3/26&#10;4. Medical Emergencies (not done yet)"></textarea>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-secondary btn-sm" onclick="parseAndPreviewQuiz()">Parse &amp; Preview</button>
+            <button class="btn btn-ghost btn-sm" id="quiz-clear-btn" style="display:none;" onclick="clearQuizPreview()">Clear</button>
+          </div>
+          <div id="quiz-preview" class="mt-4"></div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card hidden" id="admin-plan-card">
+          <div class="card-header">
+            <span class="card-title">Revision Plan Preview</span>
+          </div>
+          <div id="admin-plan-content"></div>
+        </div>
+
       </div>
 
       <!-- RESOURCES LIST -->

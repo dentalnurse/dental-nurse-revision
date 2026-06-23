@@ -41,6 +41,7 @@ async function loadWorkbook() {
     showScreen('app');
     renderResourcesList();
     renderTimetable();
+    renderPlan();
   } catch(e) {
     console.error(e);
     showScreen('error-screen');
@@ -49,7 +50,7 @@ async function loadWorkbook() {
 
 // ── Tab switching ─────────────────────────────────────────────
 window.switchTab = (tab) => {
-  ['resources','timetable'].forEach(t => {
+  ['resources','timetable','plan'].forEach(t => {
     g(`tab-${t}`)?.classList.toggle('hidden', t !== tab);
     g(`tab-${t}-btn`)?.classList.toggle('active', t === tab);
   });
@@ -314,6 +315,163 @@ function renderTimetable() {
       }).join('')}
     </div>`;
   }).join('');
+}
+
+// ── My Plan ──────────────────────────────────────────────────
+const LEARNING_STYLE_DATA = {
+  visual: {
+    label: 'Visual Learner', icon: '👁️', badge: 'badge-blue',
+    hint: 'You learn best through images, diagrams, and colour-coded notes.',
+    tips: [
+      'Use mind maps to link ideas visually',
+      'Colour-code your notes by topic',
+      'Draw dental anatomy diagrams from memory',
+      'Turn key facts into image flashcards',
+      'Use the image-based resources in your workbook first'
+    ]
+  },
+  auditory: {
+    label: 'Auditory Learner', icon: '👂', badge: 'badge-rose',
+    hint: 'You learn best by listening, speaking, and discussing ideas.',
+    tips: [
+      'Read your notes aloud when revising',
+      'Record yourself summarising each topic, then play it back',
+      'Explain topics to a friend or family member',
+      'Create rhymes or mnemonics for drug names and lists',
+      'Use written resources as prompts to speak your answers aloud'
+    ]
+  },
+  reading: {
+    label: 'Reading/Writing Learner', icon: '✍️', badge: 'badge-neutral',
+    hint: 'You learn best through reading, writing, and making detailed notes.',
+    tips: [
+      'Rewrite key points in your own words after each topic',
+      'Create bullet-point summaries and glossaries',
+      'Write out definitions and key terms repeatedly',
+      'Summarise each lecture topic as a short paragraph',
+      'Make written lists and checklists to organise information'
+    ]
+  },
+  kinesthetic: {
+    label: 'Kinesthetic Learner', icon: '🤲', badge: 'badge-rose',
+    hint: 'You learn best through doing, practising, and hands-on activities.',
+    tips: [
+      'Use physical or digital flashcards you can actively sort and test yourself with',
+      'Study in short focused bursts — 25 minutes on, 5 minutes break',
+      'Practise clinical scenarios in your head as if you\'re in the dental chair',
+      'Write notes by hand rather than typing',
+      'Test yourself constantly — don\'t just re-read notes'
+    ]
+  }
+};
+
+function renderPlan() {
+  const content = g('plan-content');
+  const empty   = g('plan-empty');
+  if (!content) return;
+
+  const quiz      = studentData?.quizResults || [];
+  const ls        = LEARNING_STYLE_DATA[studentData?.learningStyle];
+  const lifestyle = studentData?.lifestyle || {};
+  const hasPlan   = quiz.length || ls || lifestyle.hoursPerWeek;
+
+  if (!hasPlan) { content.innerHTML = ''; show('plan-empty'); return; }
+  hide('plan-empty');
+
+  const sections = [];
+
+  if (ls) {
+    sections.push(`<div class="plan-section">
+      <h3 class="plan-section-title">${ls.icon} Your Learning Style</h3>
+      <span class="badge ${ls.badge}" style="margin-bottom:10px;display:inline-block;">${ls.label}</span>
+      <p class="ls-hint">${ls.hint}</p>
+      <ul class="ls-tips">${ls.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+    </div>`);
+  }
+
+  if (quiz.length) {
+    const notDone = quiz.filter(r => !r.completed);
+    const weak    = quiz.filter(r => r.completed && r.score < 90).sort((a,b) => a.score - b.score);
+    const strong  = quiz.filter(r => r.completed && r.score >= 90);
+
+    sections.push(`<div class="plan-section">
+      <h3 class="plan-section-title">🎯 Topics to Focus On</h3>
+      ${notDone.length ? `<div class="plan-topic-group">
+        <span class="plan-group-label plan-group-missing">Not yet completed</span>
+        ${notDone.map(topicRowHTML).join('')}
+      </div>` : ''}
+      ${weak.length ? `<div class="plan-topic-group">
+        <span class="plan-group-label plan-group-weak">Needs more revision</span>
+        ${weak.map(topicRowHTML).join('')}
+      </div>` : ''}
+      ${!notDone.length && !weak.length ? `<p class="plan-all-good">All topics completed at 90% or above — great work! Keep revisiting to maintain those scores.</p>` : ''}
+      ${strong.length ? `<details class="plan-details">
+        <summary>Topics at 90%+ (${strong.length})</summary>
+        <div class="plan-topic-group" style="margin-top:10px;">${strong.map(topicRowHTML).join('')}</div>
+      </details>` : ''}
+    </div>`);
+  }
+
+  if (lifestyle.hoursPerWeek) {
+    sections.push(generateScheduleHTML(lifestyle, quiz));
+  }
+
+  if (allResources.length) {
+    sections.push(`<div class="plan-section">
+      <h3 class="plan-section-title">📚 Your Resources</h3>
+      <p class="text-sm text-muted mb-4">Open these from the Resources tab to get started.</p>
+      ${allResources.map(r => `
+        <div class="plan-resource-item" onclick="switchTab('resources');setTimeout(()=>openResource('${r.id}'),50)">
+          <div class="pri-info">
+            <span class="badge ${r.type==='worksheet'?'badge-rose':'badge-blue'}">${capitalize(r.type)}</span>
+            <span class="pri-title">${esc(r.title)}</span>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>`).join('')}
+    </div>`);
+  }
+
+  content.innerHTML = sections.join('');
+}
+
+function topicRowHTML(r) {
+  const cls  = !r.completed ? 'topic-score-missing' : r.score < 70 ? 'topic-score-low' : r.score < 90 ? 'topic-score-mid' : 'topic-score-good';
+  const text = !r.completed ? 'Not done' : `${r.score}%`;
+  return `<div class="topic-row">
+    <span class="topic-name">${esc(r.topic)}</span>
+    <span class="topic-score ${cls}">${text}</span>
+  </div>`;
+}
+
+function generateScheduleHTML(lifestyle, quiz) {
+  const hours   = lifestyle.hoursPerWeek || 5;
+  const time    = lifestyle.bestTime || 'both';
+  const stress  = parseInt(lifestyle.stressLevel) || 3;
+  const sessions = hours <= 3 ? 2 : hours <= 7 ? 3 : hours <= 12 ? 4 : 5;
+  const length   = stress >= 4 ? '20–25 min' : hours <= 5 ? '30 min' : '45 min';
+  const timeLabel = time === 'morning' ? 'Morning sessions work best for you' : time === 'evening' ? 'Evening sessions work best for you' : 'Flexible — morning or evening';
+
+  const priority = quiz.filter(r => !r.completed || r.score < 90).sort((a,b) => (a.score??-1) - (b.score??-1));
+  const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const rows = priority.length
+    ? priority.slice(0, sessions).map((t,i) => `
+        <div class="schedule-row">
+          <span class="schedule-day">${DAYS[i % 5]}</span>
+          <span class="schedule-details"><strong>${esc(t.topic)}</strong> <span class="text-sm text-muted">· ${length}</span></span>
+        </div>`).join('')
+    : '<p class="text-sm text-muted">All topics are above 90% — keep doing regular review sessions to maintain your scores.</p>';
+
+  return `<div class="plan-section">
+    <h3 class="plan-section-title">📅 Suggested Weekly Schedule</h3>
+    <div class="schedule-meta">
+      <span class="schedule-chip">${hours}h/week</span>
+      <span class="schedule-chip">${sessions} sessions/week</span>
+      <span class="schedule-chip">${length} per session</span>
+    </div>
+    <p class="text-sm text-muted mb-4">${timeLabel}. Prioritising your lowest-scoring topics first.</p>
+    ${rows}
+    ${stress >= 4 ? `<div class="plan-wellbeing-tip"><strong>Wellbeing reminder:</strong> Your stress level is high — shorter, more frequent sessions are more effective than long study marathons. Take breaks and be kind to yourself.</div>` : ''}
+  </div>`;
 }
 
 // ── Utility ──────────────────────────────────────────────────

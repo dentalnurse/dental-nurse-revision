@@ -40,6 +40,7 @@
     <div class="student-tabs" style="flex-shrink:0;">
       <button class="tab-btn active" id="tab-resources-btn" onclick="switchTab('resources')">Resources</button>
       <button class="tab-btn" id="tab-timetable-btn" onclick="switchTab('timetable')">Timetable</button>
+      <button class="tab-btn" id="tab-plan-btn" onclick="switchTab('plan')">My Plan</button>
     </div>
   </header>
 
@@ -97,6 +98,16 @@
         <div class="empty-state-icon">🗓️</div>
         <h3>No timetable yet</h3>
         <p>Your tutor hasn't set up your revision timetable yet. Check back soon!</p>
+      </div>
+    </div>
+
+    <!-- My Plan tab -->
+    <div id="tab-plan" class="hidden">
+      <div id="plan-content"></div>
+      <div id="plan-empty" class="empty-state hidden">
+        <div class="empty-state-icon">🗺️</div>
+        <h3>No plan set up yet</h3>
+        <p>Your tutor will add your quiz results and profile to generate your personalised revision plan.</p>
       </div>
     </div>
 
