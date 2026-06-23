@@ -1,4 +1,4 @@
-import { db, auth, storage } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -7,11 +7,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
-  serverTimestamp, query, orderBy
+  serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import {
-  ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ── State ──────────────────────────────────────────────────
 let currentStudentCode = null;
@@ -419,12 +416,10 @@ window.openNewResourceModal = () => {
   g('r-title').value = '';
   g('r-desc').value = '';
   g('r-link').value = '';
-  g('r-file').value = '';
   g('r-editing-id').value = '';
   g('resource-modal-title').textContent = 'New Resource';
   g('save-resource-btn').textContent = 'Save Resource';
   hide('new-resource-error');
-  hide('upload-progress');
   wsFields = [];
   renderWsFields();
   setResourceType('worksheet');
@@ -442,7 +437,6 @@ window.editResource = async (id) => {
   g('resource-modal-title').textContent = 'Edit Resource';
   g('save-resource-btn').textContent = 'Update Resource';
   hide('new-resource-error');
-  hide('upload-progress');
 
   setResourceType(r.type);
   wsFields = r.type === 'worksheet' ? [...(r.fields || [])] : [];
@@ -454,7 +448,7 @@ window.editResource = async (id) => {
 
 window.setResourceType = (type) => {
   currentResourceType = type;
-  ['worksheet','file','link'].forEach(t => {
+  ['worksheet','link'].forEach(t => {
     g(`rtype-${t}`).classList.toggle('active', t === type);
     g(`${t}-builder`).classList.toggle('hidden', t !== type);
   });
@@ -519,21 +513,6 @@ window.saveResource = async () => {
       data.linkUrl = link;
     }
 
-    if (currentResourceType === 'file') {
-      const file = g('r-file').files[0];
-      if (!file && !editingId) { showErr('new-resource-error', 'Please select a file to upload.'); setBtn('save-resource-btn', false, 'Save Resource'); return; }
-      if (file) {
-        show('upload-progress');
-        const resourceId = editingId || `res_${Date.now()}`;
-        const storePath = `resources/${resourceId}/${file.name}`;
-        const url = await uploadFile(storePath, file);
-        data.fileUrl = url;
-        data.fileName = file.name;
-        data.fileType = file.type;
-        data.fileSize = file.size;
-      }
-    }
-
     if (editingId) {
       await updateDoc(doc(db, 'resources', editingId), data);
     } else {
@@ -551,34 +530,10 @@ window.saveResource = async () => {
   }
 };
 
-async function uploadFile(path, file) {
-  return new Promise((resolve, reject) => {
-    const ref = storageRef(storage, path);
-    const task = uploadBytesResumable(ref, file);
-    task.on('state_changed',
-      snap => {
-        const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
-        g('upload-bar').style.width = pct + '%';
-        g('upload-status').textContent = `Uploading… ${Math.round(pct)}%`;
-      },
-      reject,
-      async () => resolve(await getDownloadURL(task.snapshot.ref))
-    );
-  });
-}
-
 window.confirmDeleteResource = (id, title) => {
   confirmDelete(`Delete "${title}"?`,
-    'This will permanently delete this resource. Students who have it assigned may lose access.',
+    'This will permanently delete this resource. Students who have it assigned will lose access to it.',
     async () => {
-      // Remove fileUrl if file type
-      const snap = await getDoc(doc(db, 'resources', id));
-      if (snap.exists() && snap.data().fileUrl) {
-        try {
-          const path = decodeURIComponent(snap.data().fileUrl.split('/o/')[1].split('?')[0]);
-          await deleteObject(storageRef(storage, path));
-        } catch(e) { /* file might not exist */ }
-      }
       await deleteDoc(doc(db, 'resources', id));
       loadResources();
     }
@@ -621,8 +576,7 @@ window.closeModal = closeModal;
 
 function typeIcon(type) {
   if (type === 'worksheet') return { emoji: '📝', bg: 'item-icon-rose' };
-  if (type === 'file')      return { emoji: '📄', bg: 'item-icon-blue' };
-  if (type === 'link')      return { emoji: '🔗', bg: 'item-icon-cream' };
+  if (type === 'link')      return { emoji: '🔗', bg: 'item-icon-blue' };
   return { emoji: '📌', bg: 'item-icon-cream' };
 }
 

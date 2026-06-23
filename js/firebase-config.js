@@ -9,14 +9,12 @@
 //  5. In Firebase Console:
 //       - Enable Authentication → Email/Password
 //       - Create Firestore Database (start in production mode)
-//       - Enable Storage
-//  6. Deploy the rules in firestore.rules and storage.rules
+//  6. Deploy the rules in firestore.rules
 // ============================================================
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getStorage } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ⚠️  REPLACE THESE VALUES WITH YOUR OWN FIREBASE CONFIG
 const firebaseConfig = {
@@ -30,7 +28,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const db      = getFirestore(app);
-export const auth    = getAuth(app);
-export const storage = getStorage(app);
+export const db   = getFirestore(app);
+export const auth = getAuth(app);
 export { app };

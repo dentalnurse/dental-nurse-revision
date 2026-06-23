@@ -300,7 +300,6 @@
     <!-- Type tabs -->
     <div class="student-tabs mb-6" style="width:100%;display:flex;background:var(--cream-mid);border-radius:var(--radius-full);padding:3px;">
       <button class="tab-btn active" id="rtype-worksheet" onclick="setResourceType('worksheet')">Worksheet</button>
-      <button class="tab-btn" id="rtype-file" onclick="setResourceType('file')">File Upload</button>
       <button class="tab-btn" id="rtype-link" onclick="setResourceType('link')">Link</button>
     </div>
 
@@ -321,21 +320,6 @@
       </div>
       <div id="ws-fields-list"></div>
       <p class="form-hint">Add questions or prompts that students will fill in. Leave blank for a free-write area.</p>
-    </div>
-
-    <!-- File upload -->
-    <div id="file-builder" class="hidden">
-      <div class="form-group">
-        <label for="r-file">Upload File *</label>
-        <input type="file" id="r-file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp">
-        <p class="form-hint">Supported: PDF, Word documents, images. Max 20 MB.</p>
-      </div>
-      <div id="upload-progress" class="hidden">
-        <div style="background:var(--cream-mid);border-radius:var(--radius-full);height:6px;overflow:hidden;">
-          <div id="upload-bar" style="background:var(--rose);height:100%;width:0%;transition:width 0.3s;border-radius:var(--radius-full);"></div>
-        </div>
-        <p class="form-hint mt-2" id="upload-status">Uploading…</p>
-      </div>
     </div>
 
     <!-- Link -->

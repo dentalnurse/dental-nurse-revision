@@ -127,8 +127,6 @@ window.openResource = async (id) => {
   // Render resource body
   if (resource.type === 'worksheet') {
     renderWorksheet(resource, saved);
-  } else if (resource.type === 'file') {
-    renderFile(resource, saved);
   } else if (resource.type === 'link') {
     renderLink(resource, saved);
   }
@@ -205,45 +203,6 @@ function collectAnswers() {
     else if (!el.classList.contains('rating-btn')) { answers[fid] = el.value; }
   });
   return answers;
-}
-
-// ── File resource ─────────────────────────────────────────────
-function renderFile(resource, saved) {
-  const notes = saved?.notes || '';
-  const isImage = resource.fileType?.startsWith('image/');
-  const isPDF = resource.fileType === 'application/pdf';
-
-  let preview = '';
-  if (resource.fileUrl) {
-    if (isImage) {
-      preview = `<div class="file-preview">
-        <div class="file-preview-bar">📄 <span>${esc(resource.fileName || 'File')}</span></div>
-        <img src="${resource.fileUrl}" alt="${esc(resource.fileName)}" class="file-img">
-      </div>`;
-    } else if (isPDF) {
-      preview = `<div class="file-preview">
-        <div class="file-preview-bar">📄 <span>${esc(resource.fileName || 'PDF')}</span>
-          <a href="${resource.fileUrl}" target="_blank" class="btn btn-secondary btn-sm" style="margin-left:auto;">Open in new tab</a>
-        </div>
-        <iframe class="file-preview-frame" src="${resource.fileUrl}" title="${esc(resource.fileName)}"></iframe>
-      </div>`;
-    } else {
-      preview = `<div class="file-preview">
-        <div class="file-preview-bar">📄 <span>${esc(resource.fileName || 'File')}</span>
-          <a href="${resource.fileUrl}" target="_blank" download class="btn btn-primary btn-sm" style="margin-left:auto;">Download</a>
-        </div>
-      </div>`;
-    }
-  }
-
-  g('rv-body').innerHTML = `
-    ${preview}
-    <div class="ws-field">
-      <label class="ws-label">Your Notes</label>
-      <textarea data-field="notes" rows="5" placeholder="Add your notes about this resource…">${esc(notes)}</textarea>
-    </div>`;
-
-  g('rv-body').querySelector('textarea')?.addEventListener('input', scheduleAutoSave);
 }
 
 // ── Link resource ─────────────────────────────────────────────
@@ -358,8 +317,7 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 
 function typeIcon(type) {
   if (type === 'worksheet') return { badge: 'badge-rose' };
-  if (type === 'file')      return { badge: 'badge-blue' };
-  if (type === 'link')      return { badge: 'badge-neutral' };
+  if (type === 'link')      return { badge: 'badge-blue' };
   return { badge: 'badge-neutral' };
 }
 
