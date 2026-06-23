@@ -374,6 +374,7 @@
     <!-- Type tabs -->
     <div class="student-tabs mb-6" style="width:100%;display:flex;background:var(--cream-mid);border-radius:var(--radius-full);padding:3px;">
       <button class="tab-btn active" id="rtype-worksheet" onclick="setResourceType('worksheet')">Worksheet</button>
+      <button class="tab-btn" id="rtype-canvas" onclick="setResourceType('canvas')">Canvas</button>
       <button class="tab-btn" id="rtype-link" onclick="setResourceType('link')">Link</button>
     </div>
 
@@ -399,6 +400,25 @@
       </div>
       <div id="ws-fields-list"></div>
       <p class="form-hint">Mix images, headings, instructions and questions to build your worksheet. Drag to reorder isn't needed — just delete and re-add.</p>
+    </div>
+
+    <!-- Canvas builder -->
+    <div id="canvas-builder" class="hidden">
+      <div class="form-group">
+        <label for="r-canvas-url">Background Image URL or path</label>
+        <div class="flex gap-2">
+          <input type="text" id="r-canvas-url" placeholder="https://… or assets/worksheets/myfile.png" style="flex:1;">
+          <button class="btn btn-secondary btn-sm" onclick="loadCanvasImage()" style="flex-shrink:0;">Load Image</button>
+        </div>
+        <p class="form-hint">Export your Canva design as PNG and paste the image URL, or commit the file to assets/worksheets/ and use the relative path.</p>
+      </div>
+      <div id="canvas-editor-area" class="hidden">
+        <p class="form-hint mb-3" style="color:var(--blue-dark);">Click anywhere on the image to place a text field. Each click adds a numbered marker.</p>
+        <div id="canvas-editor-container" class="overlay-canvas-container">
+          <img id="canvas-preview-img" src="" alt="" style="width:100%;height:auto;display:block;pointer-events:none;">
+        </div>
+        <div id="overlay-list" class="mt-4"></div>
+      </div>
     </div>
 
     <!-- Link -->

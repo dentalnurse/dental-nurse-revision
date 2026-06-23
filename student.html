@@ -39,8 +39,8 @@
     </div>
     <div class="student-tabs" style="flex-shrink:0;">
       <button class="tab-btn active" id="tab-resources-btn" onclick="switchTab('resources')">Resources</button>
-      <button class="tab-btn" id="tab-timetable-btn" onclick="switchTab('timetable')">Timetable</button>
-      <button class="tab-btn" id="tab-plan-btn" onclick="switchTab('plan')">My Plan</button>
+      <button class="tab-btn" id="tab-planner-btn" onclick="switchTab('planner')">Planner</button>
+      <button class="tab-btn" id="tab-reflections-btn" onclick="switchTab('reflections')">Reflections</button>
     </div>
   </header>
 
@@ -91,23 +91,61 @@
       </div>
     </div>
 
-    <!-- Timetable tab -->
-    <div id="tab-timetable" class="hidden">
-      <div id="timetable-view" class="timetable-view"></div>
-      <div id="timetable-empty" class="empty-state hidden">
+    <!-- Planner tab (timetable + study plan) -->
+    <div id="tab-planner" class="hidden">
+      <div id="planner-content"></div>
+      <div id="planner-empty" class="empty-state hidden">
         <div class="empty-state-icon">🗓️</div>
-        <h3>No timetable yet</h3>
-        <p>Your tutor hasn't set up your revision timetable yet. Check back soon!</p>
+        <h3>No planner set up yet</h3>
+        <p>Your tutor will add your timetable and revision plan. Check back soon!</p>
       </div>
     </div>
 
-    <!-- My Plan tab -->
-    <div id="tab-plan" class="hidden">
-      <div id="plan-content"></div>
-      <div id="plan-empty" class="empty-state hidden">
-        <div class="empty-state-icon">🗺️</div>
-        <h3>No plan set up yet</h3>
-        <p>Your tutor will add your quiz results and profile to generate your personalised revision plan.</p>
+    <!-- Reflections tab -->
+    <div id="tab-reflections" class="hidden">
+      <div class="reflection-nav">
+        <button class="btn btn-ghost btn-sm" onclick="changeReflectionWeek(-1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Previous
+        </button>
+        <span class="reflection-week-label" id="reflection-week-label">This Week</span>
+        <button class="btn btn-ghost btn-sm" id="reflection-next-btn" onclick="changeReflectionWeek(1)" disabled>
+          Next
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="ws-field">
+        <label class="ws-label">What went well this week?</label>
+        <textarea id="ref-went-well" rows="3" placeholder="Share your wins, big or small…"></textarea>
+      </div>
+      <div class="ws-field">
+        <label class="ws-label">What were your challenges?</label>
+        <textarea id="ref-challenges" rows="3" placeholder="Topics that felt difficult, or obstacles you faced…"></textarea>
+      </div>
+      <div class="ws-field">
+        <label class="ws-label">Topics to revisit</label>
+        <textarea id="ref-revisit" rows="3" placeholder="Which topics do you want to go over again?"></textarea>
+      </div>
+      <div class="ws-field">
+        <label class="ws-label">Goals for next week</label>
+        <textarea id="ref-goals" rows="3" placeholder="What do you want to achieve?"></textarea>
+      </div>
+      <div class="ws-field">
+        <label class="ws-label">Wellbeing this week — 1 (struggling) to 5 (great)</label>
+        <div class="rating-group" id="ref-wellbeing">
+          <button class="rating-btn" data-value="1">1</button>
+          <button class="rating-btn" data-value="2">2</button>
+          <button class="rating-btn" data-value="3">3</button>
+          <button class="rating-btn" data-value="4">4</button>
+          <button class="rating-btn" data-value="5">5</button>
+        </div>
+      </div>
+      <div class="reflection-footer">
+        <div class="save-status" id="ref-save-status">Not saved yet</div>
+        <button class="btn btn-primary" onclick="saveReflection()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Reflection
+        </button>
       </div>
     </div>
 

@@ -9,6 +9,8 @@ let studentData = null;
 let allResources = [];
 let currentResourceId = null;
 let autoSaveTimer = null;
+let reflectionWeekOffset = 0;
+let reflectionAutoSaveTimer = null;
 
 // ── Bootstrap ────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
@@ -29,7 +31,6 @@ async function loadWorkbook() {
     g('greet-name').textContent = studentData.name || 'Your Workbook';
     g('greet-sub').textContent = 'Welcome back!';
 
-    // Load assigned resources
     const assignedIds = studentData.assignedResources || [];
     if (assignedIds.length) {
       const resourceDocs = await Promise.all(assignedIds.map(id => getDoc(doc(db, 'resources', id))));
@@ -40,8 +41,7 @@ async function loadWorkbook() {
 
     showScreen('app');
     renderResourcesList();
-    renderTimetable();
-    renderPlan();
+    renderPlanner();
   } catch(e) {
     console.error(e);
     showScreen('error-screen');
@@ -50,16 +50,16 @@ async function loadWorkbook() {
 
 // ── Tab switching ─────────────────────────────────────────────
 window.switchTab = (tab) => {
-  ['resources','timetable','plan'].forEach(t => {
+  ['resources','planner','reflections'].forEach(t => {
     g(`tab-${t}`)?.classList.toggle('hidden', t !== tab);
     g(`tab-${t}-btn`)?.classList.toggle('active', t === tab);
   });
+  if (tab === 'reflections') renderReflections();
 };
 
 // ── Resources list ────────────────────────────────────────────
 function renderResourcesList() {
   const grid  = g('resources-grid');
-  const empty = g('resources-empty');
   showEl('resources-list-view');
   hide('resource-viewer-view');
 
@@ -70,7 +70,6 @@ function renderResourcesList() {
   }
   hide('resources-empty');
 
-  // Load saved work statuses
   Promise.all(allResources.map(r => getDoc(doc(db, 'studentWork', `${studentCode}_${r.id}`))))
     .then(workDocs => {
       grid.innerHTML = allResources.map((r, i) => {
@@ -112,7 +111,6 @@ window.openResource = async (id) => {
   g('rv-title').textContent = resource.title;
   g('rv-desc').textContent = resource.description || '';
 
-  // Load saved work
   const workSnap = await getDoc(doc(db, 'studentWork', `${studentCode}_${id}`));
   const saved = workSnap.exists() ? workSnap.data() : null;
 
@@ -125,9 +123,10 @@ window.openResource = async (id) => {
     g('save-status').className = 'save-status';
   }
 
-  // Render resource body
   if (resource.type === 'worksheet') {
     renderWorksheet(resource, saved);
+  } else if (resource.type === 'canvas') {
+    renderCanvas(resource, saved);
   } else if (resource.type === 'link') {
     renderLink(resource, saved);
   }
@@ -161,7 +160,6 @@ function renderWorksheet(resource, saved) {
     </div>`;
   }).join('');
 
-  // Auto-save on change
   g('rv-body').querySelectorAll('input,textarea').forEach(el => {
     el.addEventListener('input', scheduleAutoSave);
   });
@@ -222,6 +220,25 @@ function collectAnswers() {
   return answers;
 }
 
+// ── Canvas resource ───────────────────────────────────────────
+function renderCanvas(resource, saved) {
+  const answers = saved?.answers || {};
+  const overlays = resource.overlays || [];
+
+  g('rv-body').innerHTML = `
+    <div class="canvas-container">
+      <img src="${esc(resource.imageUrl || '')}" alt="" class="canvas-bg-img"
+           onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<p class=\\'text-sm text-muted\\' style=\\'padding:20px;\\'>Image could not be loaded.</p>')">
+      ${overlays.map(o => `
+        <textarea class="canvas-overlay-field" data-field="${esc(o.id)}"
+          placeholder="${esc(o.label)}"
+          style="left:${o.x}%;top:${o.y}%;width:${o.width || 28}%;"
+        >${esc(answers[o.id] || '')}</textarea>`).join('')}
+    </div>`;
+
+  g('rv-body').querySelectorAll('textarea').forEach(el => el.addEventListener('input', scheduleAutoSave));
+}
+
 // ── Link resource ─────────────────────────────────────────────
 function renderLink(resource, saved) {
   const notes = saved?.notes || '';
@@ -258,7 +275,7 @@ window.saveWork = async () => {
 
   try {
     let workData = { savedAt: serverTimestamp(), studentCode, resourceId: currentResourceId };
-    if (resource.type === 'worksheet') {
+    if (resource.type === 'worksheet' || resource.type === 'canvas') {
       workData.answers = collectAnswers();
     } else {
       const ta = g('rv-body').querySelector('[data-field="notes"]');
@@ -280,44 +297,7 @@ window.saveWork = async () => {
   }
 };
 
-// ── Timetable ─────────────────────────────────────────────────
-function renderTimetable() {
-  const entries = studentData.timetable || [];
-  const view  = g('timetable-view');
-  const empty = g('timetable-empty');
-
-  if (!entries.length) { view.innerHTML = ''; show('timetable-empty'); return; }
-  hide('timetable-empty');
-
-  const byDay = {};
-  entries.forEach(e => {
-    if (!byDay[e.day]) byDay[e.day] = [];
-    byDay[e.day].push(e);
-  });
-
-  const orderedDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-    .filter(d => byDay[d]);
-
-  view.innerHTML = orderedDays.map(day => {
-    const dayEntries = byDay[day];
-    return `<div class="day-block">
-      <div class="day-header">${day}</div>
-      ${dayEntries.map(e => {
-        const linkedRes = e.resourceId ? allResources.find(r => r.id === e.resourceId) : null;
-        return `<div class="day-entry">
-          <div class="entry-time">${esc(e.period || '—')}</div>
-          <div class="entry-body">
-            <div class="entry-topic">${esc(e.topic || '')}</div>
-            ${e.notes ? `<div class="entry-notes">${esc(e.notes)}</div>` : ''}
-            ${linkedRes ? `<div class="entry-link"><button class="btn btn-primary btn-sm" onclick="openResource('${linkedRes.id}')">Open: ${esc(linkedRes.title)} →</button></div>` : ''}
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }).join('');
-}
-
-// ── My Plan ──────────────────────────────────────────────────
+// ── Planner (timetable + study plan) ─────────────────────────
 const LEARNING_STYLE_DATA = {
   visual: {
     label: 'Visual Learner', icon: '👁️', badge: 'badge-blue',
@@ -365,21 +345,63 @@ const LEARNING_STYLE_DATA = {
   }
 };
 
-function renderPlan() {
-  const content = g('plan-content');
-  const empty   = g('plan-empty');
+function renderPlanner() {
+  const content = g('planner-content');
+  const empty   = g('planner-empty');
   if (!content) return;
 
+  const timetable = studentData?.timetable || [];
   const quiz      = studentData?.quizResults || [];
   const ls        = LEARNING_STYLE_DATA[studentData?.learningStyle];
   const lifestyle = studentData?.lifestyle || {};
-  const hasPlan   = quiz.length || ls || lifestyle.hoursPerWeek;
 
-  if (!hasPlan) { content.innerHTML = ''; show('plan-empty'); return; }
-  hide('plan-empty');
+  const hasTimetable = timetable.length > 0;
+  const hasPlan = quiz.length || ls || lifestyle.hoursPerWeek;
+
+  if (!hasTimetable && !hasPlan) {
+    content.innerHTML = '';
+    show('planner-empty');
+    return;
+  }
+  hide('planner-empty');
 
   const sections = [];
 
+  // Timetable section
+  if (hasTimetable) {
+    const byDay = {};
+    timetable.forEach(e => {
+      if (!byDay[e.day]) byDay[e.day] = [];
+      byDay[e.day].push(e);
+    });
+    const orderedDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+      .filter(d => byDay[d]);
+
+    const dayHTML = orderedDays.map(day => {
+      const dayEntries = byDay[day];
+      return `<div class="day-block">
+        <div class="day-header">${day}</div>
+        ${dayEntries.map(e => {
+          const linkedRes = e.resourceId ? allResources.find(r => r.id === e.resourceId) : null;
+          return `<div class="day-entry">
+            <div class="entry-time">${esc(e.period || '—')}</div>
+            <div class="entry-body">
+              <div class="entry-topic">${esc(e.topic || '')}</div>
+              ${e.notes ? `<div class="entry-notes">${esc(e.notes)}</div>` : ''}
+              ${linkedRes ? `<div class="entry-link"><button class="btn btn-primary btn-sm" onclick="openResource('${linkedRes.id}')">Open: ${esc(linkedRes.title)} →</button></div>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+
+    sections.push(`<div class="plan-section">
+      <h3 class="plan-section-title">📅 Your Revision Timetable</h3>
+      <div class="timetable-view">${dayHTML}</div>
+    </div>`);
+  }
+
+  // Learning style section
   if (ls) {
     sections.push(`<div class="plan-section">
       <h3 class="plan-section-title">${ls.icon} Your Learning Style</h3>
@@ -389,6 +411,7 @@ function renderPlan() {
     </div>`);
   }
 
+  // Topics section
   if (quiz.length) {
     const notDone = quiz.filter(r => !r.completed);
     const weak    = quiz.filter(r => r.completed && r.score < 90).sort((a,b) => a.score - b.score);
@@ -412,10 +435,12 @@ function renderPlan() {
     </div>`);
   }
 
+  // Suggested schedule
   if (lifestyle.hoursPerWeek) {
     sections.push(generateScheduleHTML(lifestyle, quiz));
   }
 
+  // Resources quick-links
   if (allResources.length) {
     sections.push(`<div class="plan-section">
       <h3 class="plan-section-title">📚 Your Resources</h3>
@@ -423,7 +448,7 @@ function renderPlan() {
       ${allResources.map(r => `
         <div class="plan-resource-item" onclick="switchTab('resources');setTimeout(()=>openResource('${r.id}'),50)">
           <div class="pri-info">
-            <span class="badge ${r.type==='worksheet'?'badge-rose':'badge-blue'}">${capitalize(r.type)}</span>
+            <span class="badge ${typeIcon(r.type).badge}">${capitalize(r.type)}</span>
             <span class="pri-title">${esc(r.title)}</span>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -444,9 +469,9 @@ function topicRowHTML(r) {
 }
 
 function generateScheduleHTML(lifestyle, quiz) {
-  const hours   = lifestyle.hoursPerWeek || 5;
-  const time    = lifestyle.bestTime || 'both';
-  const stress  = parseInt(lifestyle.stressLevel) || 3;
+  const hours    = lifestyle.hoursPerWeek || 5;
+  const time     = lifestyle.bestTime || 'both';
+  const stress   = parseInt(lifestyle.stressLevel) || 3;
   const sessions = hours <= 3 ? 2 : hours <= 7 ? 3 : hours <= 12 ? 4 : 5;
   const length   = stress >= 4 ? '20–25 min' : hours <= 5 ? '30 min' : '45 min';
   const timeLabel = time === 'morning' ? 'Morning sessions work best for you' : time === 'evening' ? 'Evening sessions work best for you' : 'Flexible — morning or evening';
@@ -474,6 +499,121 @@ function generateScheduleHTML(lifestyle, quiz) {
   </div>`;
 }
 
+// ── Reflections ──────────────────────────────────────────────
+function getWeekKey(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset * 7);
+  const jan4 = new Date(d.getFullYear(), 0, 4);
+  const weekNum = Math.ceil(((d - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+  return `${d.getFullYear()}W${String(weekNum).padStart(2, '0')}`;
+}
+
+function weekLabel(offset) {
+  if (offset === 0) return 'This Week';
+  if (offset === -1) return 'Last Week';
+  if (offset < 0) return `${Math.abs(offset)} weeks ago`;
+  return `${offset} week${offset > 1 ? 's' : ''} ahead`;
+}
+
+function renderReflections() {
+  g('reflection-week-label').textContent = weekLabel(reflectionWeekOffset);
+  const nextBtn = g('reflection-next-btn');
+  if (nextBtn) nextBtn.disabled = reflectionWeekOffset >= 0;
+
+  ['ref-went-well','ref-challenges','ref-revisit','ref-goals'].forEach(id => {
+    const el = g(id);
+    if (el) el.oninput = scheduleReflectionAutoSave;
+  });
+
+  const wb = g('ref-wellbeing');
+  if (wb) {
+    wb.querySelectorAll('.rating-btn').forEach(btn => {
+      btn.onclick = () => {
+        wb.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        scheduleReflectionAutoSave();
+      };
+    });
+  }
+
+  loadReflection();
+}
+
+async function loadReflection() {
+  const key = getWeekKey(reflectionWeekOffset);
+  const statusEl = g('ref-save-status');
+  if (statusEl) { statusEl.textContent = 'Loading…'; statusEl.className = 'save-status'; }
+
+  try {
+    const snap = await getDoc(doc(db, 'studentWork', `${studentCode}_ref_${key}`));
+    const data = snap.exists() ? snap.data() : {};
+
+    const setVal = (id, val) => { const el = g(id); if (el) el.value = val || ''; };
+    setVal('ref-went-well', data.wentWell);
+    setVal('ref-challenges', data.challenges);
+    setVal('ref-revisit', data.revisit);
+    setVal('ref-goals', data.goals);
+
+    const wb = g('ref-wellbeing');
+    if (wb) {
+      wb.querySelectorAll('.rating-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.value === String(data.wellbeing || ''));
+      });
+    }
+
+    if (snap.exists() && data.savedAt) {
+      const d = data.savedAt.toDate();
+      if (statusEl) { statusEl.textContent = `✓ Saved ${relativeDate(d)}`; statusEl.className = 'save-status saved'; }
+    } else {
+      if (statusEl) { statusEl.textContent = 'Not saved yet'; statusEl.className = 'save-status'; }
+    }
+  } catch(e) {
+    console.error(e);
+    if (statusEl) statusEl.textContent = 'Not saved yet';
+  }
+}
+
+function scheduleReflectionAutoSave() {
+  clearTimeout(reflectionAutoSaveTimer);
+  const statusEl = g('ref-save-status');
+  if (statusEl) { statusEl.textContent = 'Unsaved changes…'; statusEl.className = 'save-status'; }
+  reflectionAutoSaveTimer = setTimeout(saveReflection, 3000);
+}
+
+window.saveReflection = async () => {
+  const key = getWeekKey(reflectionWeekOffset);
+  const wellbeingEl = g('ref-wellbeing')?.querySelector('.rating-btn.selected');
+  const statusEl = g('ref-save-status');
+
+  const data = {
+    savedAt: serverTimestamp(),
+    studentCode,
+    weekKey: key,
+    wentWell:   (g('ref-went-well')?.value || ''),
+    challenges: (g('ref-challenges')?.value || ''),
+    revisit:    (g('ref-revisit')?.value || ''),
+    goals:      (g('ref-goals')?.value || ''),
+    wellbeing:  wellbeingEl ? parseInt(wellbeingEl.dataset.value) : null,
+  };
+
+  try {
+    await setDoc(doc(db, 'studentWork', `${studentCode}_ref_${key}`), data, { merge: true });
+    const now = new Date();
+    if (statusEl) { statusEl.textContent = `✓ Saved ${relativeDate(now)}`; statusEl.className = 'save-status saved'; }
+  } catch(e) {
+    console.error(e);
+    if (statusEl) { statusEl.textContent = 'Save failed — please try again'; statusEl.className = 'save-status'; }
+  }
+};
+
+window.changeReflectionWeek = (delta) => {
+  const newOffset = reflectionWeekOffset + delta;
+  if (newOffset > 0) return;
+  reflectionWeekOffset = newOffset;
+  clearTimeout(reflectionAutoSaveTimer);
+  renderReflections();
+};
+
 // ── Utility ──────────────────────────────────────────────────
 function showScreen(id) {
   hide('loading-screen');
@@ -491,6 +631,7 @@ function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 
 function typeIcon(type) {
   if (type === 'worksheet') return { badge: 'badge-rose' };
+  if (type === 'canvas')    return { badge: 'badge-blue' };
   if (type === 'link')      return { badge: 'badge-blue' };
   return { badge: 'badge-neutral' };
 }

@@ -14,6 +14,7 @@ import {
 let currentStudentCode = null;
 let allResources = [];
 let wsFields = [];        // worksheet fields being built
+let wsOverlays = [];      // canvas overlay positions
 let currentResourceType = 'worksheet';
 let timetableRows = [];   // live timetable rows for editing
 
@@ -464,7 +465,10 @@ window.openNewResourceModal = () => {
   g('save-resource-btn').textContent = 'Save Resource';
   hide('new-resource-error');
   wsFields = [];
+  wsOverlays = [];
   renderWsFields();
+  if (g('r-canvas-url')) g('r-canvas-url').value = '';
+  if (g('canvas-editor-area')) hide('canvas-editor-area');
   setResourceType('worksheet');
   openModal('modal-new-resource');
 };
@@ -486,14 +490,22 @@ window.editResource = async (id) => {
   renderWsFields();
   if (r.type === 'link') g('r-link').value = r.linkUrl || '';
 
+  wsOverlays = r.type === 'canvas' ? [...(r.overlays || [])] : [];
+  if (r.type === 'canvas' && r.imageUrl) {
+    if (g('r-canvas-url')) g('r-canvas-url').value = r.imageUrl;
+    loadCanvasImage();
+  } else {
+    if (g('canvas-editor-area')) hide('canvas-editor-area');
+  }
+
   openModal('modal-new-resource');
 };
 
 window.setResourceType = (type) => {
   currentResourceType = type;
-  ['worksheet','link'].forEach(t => {
-    g(`rtype-${t}`).classList.toggle('active', t === type);
-    g(`${t}-builder`).classList.toggle('hidden', t !== type);
+  ['worksheet','canvas','link'].forEach(t => {
+    g(`rtype-${t}`)?.classList.toggle('active', t === type);
+    g(`${t}-builder`)?.classList.toggle('hidden', t !== type);
   });
 };
 
@@ -581,6 +593,13 @@ window.saveResource = async () => {
 
     if (currentResourceType === 'worksheet') {
       data.fields = wsFields.length ? wsFields : [{ id: 'notes', label: 'Your notes', type: 'textarea' }];
+    }
+
+    if (currentResourceType === 'canvas') {
+      const imgUrl = v('r-canvas-url');
+      if (!imgUrl) { showErr('new-resource-error', 'Please enter an image URL.'); setBtn('save-resource-btn', false, editingId ? 'Update Resource' : 'Save Resource'); return; }
+      data.imageUrl = imgUrl;
+      data.overlays = wsOverlays;
     }
 
     if (currentResourceType === 'link') {
@@ -760,6 +779,93 @@ function renderAdminRecommendations(s) {
     ` : ''}`;
 }
 
+// ── Canvas overlay editor ─────────────────────────────────────
+window.loadCanvasImage = () => {
+  const url = v('r-canvas-url');
+  if (!url) { flashMessage('Please enter an image URL first.'); return; }
+  const img = g('canvas-preview-img');
+  const area = g('canvas-editor-area');
+  if (!img || !area) return;
+
+  img.onload = () => {
+    show('canvas-editor-area');
+    setupOverlayClickHandler();
+    renderOverlayEditor();
+  };
+  img.onerror = () => {
+    flashMessage('Image could not be loaded — check the URL or path.');
+    hide('canvas-editor-area');
+  };
+  img.src = url;
+};
+
+function setupOverlayClickHandler() {
+  const container = g('canvas-editor-container');
+  if (!container) return;
+  const handler = (e) => {
+    if (e.target.closest('.overlay-marker')) return;
+    const rect = container.getBoundingClientRect();
+    const x = +((( e.clientX - rect.left) / rect.width)  * 100).toFixed(2);
+    const y = +((( e.clientY - rect.top)  / rect.height) * 100).toFixed(2);
+    wsOverlays.push({ id: `f_${Date.now()}`, x, y, width: 28, label: `Field ${wsOverlays.length + 1}` });
+    renderOverlayEditor();
+  };
+  container.replaceWith(container.cloneNode(true)); // remove old listeners
+  g('canvas-editor-container').addEventListener('click', handler);
+}
+
+function renderOverlayEditor() {
+  const container = g('canvas-editor-container');
+  if (!container) return;
+
+  // Remove old markers
+  container.querySelectorAll('.overlay-marker').forEach(m => m.remove());
+
+  // Place numbered markers
+  wsOverlays.forEach((o, i) => {
+    const marker = document.createElement('div');
+    marker.className = 'overlay-marker';
+    marker.style.cssText = `left:${o.x}%;top:${o.y}%;`;
+    marker.textContent = i + 1;
+    container.appendChild(marker);
+  });
+
+  // Render editable list
+  const list = g('overlay-list');
+  if (!list) return;
+  if (!wsOverlays.length) {
+    list.innerHTML = '<p class="text-sm text-muted">Click on the image above to place text fields.</p>';
+    return;
+  }
+  list.innerHTML = wsOverlays.map((o, i) => `
+    <div class="overlay-list-item">
+      <span class="overlay-num">${i + 1}</span>
+      <input type="text" value="${esc(o.label)}" placeholder="Field label…"
+             oninput="updateOverlayLabel('${o.id}',this.value)" style="flex:1;">
+      <select onchange="updateOverlaySize('${o.id}',this.value)">
+        <option value="18" ${o.width===18?'selected':''}>Narrow</option>
+        <option value="28" ${o.width===28?'selected':''}>Medium</option>
+        <option value="40" ${o.width===40?'selected':''}>Wide</option>
+      </select>
+      <button class="btn btn-ghost btn-icon" onclick="removeOverlay('${o.id}')" title="Remove">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+window.removeOverlay = (id) => {
+  wsOverlays = wsOverlays.filter(o => o.id !== id);
+  renderOverlayEditor();
+};
+window.updateOverlayLabel = (id, value) => {
+  const o = wsOverlays.find(x => x.id === id);
+  if (o) o.label = value;
+};
+window.updateOverlaySize = (id, value) => {
+  const o = wsOverlays.find(x => x.id === id);
+  if (o) o.width = parseInt(value);
+};
+
 // ── Utility functions ─────────────────────────────────────────
 function show(id)  { g(id)?.classList.remove('hidden'); }
 function hide(id)  { g(id)?.classList.add('hidden'); }
@@ -785,6 +891,7 @@ window.closeModal = closeModal;
 
 function typeIcon(type) {
   if (type === 'worksheet') return { emoji: '📝', bg: 'item-icon-rose' };
+  if (type === 'canvas')    return { emoji: '🖼️', bg: 'item-icon-blue' };
   if (type === 'link')      return { emoji: '🔗', bg: 'item-icon-blue' };
   return { emoji: '📌', bg: 'item-icon-cream' };
 }
