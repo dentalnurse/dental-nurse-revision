@@ -22,27 +22,38 @@ const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 // ── Bootstrap ───────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
-  if (user) {
-    // Verify admin role
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
-      await signOut(auth);
-      showAuthPage('login');
-      showLoginError('Access denied. Admin credentials required.');
-      return;
-    }
-    document.getElementById('sidebar-email').textContent = user.email;
-    showApp();
-    loadDashboard();
-  } else {
-    // Check if any admin exists yet
-    const setupSnap = await getDoc(doc(db, 'config', 'setup'));
-    if (!setupSnap.exists() || !setupSnap.data().adminCreated) {
-      showAuthPage('setup');
+  try {
+    if (user) {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+        await signOut(auth);
+        showAuthPage('login');
+        showLoginError('Access denied. Admin credentials required.');
+        return;
+      }
+      document.getElementById('sidebar-email').textContent = user.email;
+      showApp();
+      loadDashboard();
     } else {
-      showAuthPage('login');
+      try {
+        const setupSnap = await getDoc(doc(db, 'config', 'setup'));
+        if (!setupSnap.exists() || !setupSnap.data().adminCreated) {
+          showAuthPage('setup');
+        } else {
+          showAuthPage('login');
+        }
+      } catch {
+        // Firestore not yet accessible (rules not published) — show setup form
+        showAuthPage('setup');
+      }
     }
+  } catch (e) {
+    console.error('Auth init error:', e);
+    showAuthPage('login');
   }
+}, error => {
+  console.error('Auth error:', error);
+  showAuthPage('login');
 });
 
 // ── Auth helpers ────────────────────────────────────────────
