@@ -314,12 +314,17 @@
 
     <!-- Worksheet fields builder -->
     <div id="worksheet-builder">
-      <div class="flex items-center justify-between mb-4">
-        <label style="font-size:0.8125rem;font-weight:600;color:var(--dark-mid);">Questions / Fields</label>
-        <button class="btn btn-secondary btn-sm" onclick="addWorksheetField()">+ Add Question</button>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:0.8125rem;font-weight:600;color:var(--dark-mid);display:block;margin-bottom:10px;">Content Blocks</label>
+        <div class="flex gap-2" style="flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="addWsItem('image')">🖼 Add Image</button>
+          <button class="btn btn-secondary btn-sm" onclick="addWsItem('section')">🔤 Add Heading</button>
+          <button class="btn btn-secondary btn-sm" onclick="addWsItem('instruction')">📝 Add Text Block</button>
+          <button class="btn btn-primary btn-sm" onclick="addWsItem('textarea')">＋ Add Question</button>
+        </div>
       </div>
       <div id="ws-fields-list"></div>
-      <p class="form-hint">Add questions or prompts that students will fill in. Leave blank for a free-write area.</p>
+      <p class="form-hint">Mix images, headings, instructions and questions to build your worksheet. Drag to reorder isn't needed — just delete and re-add.</p>
     </div>
 
     <!-- Link -->

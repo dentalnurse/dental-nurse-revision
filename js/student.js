@@ -143,11 +143,16 @@ window.backToList = () => {
 };
 
 // ── Worksheet ─────────────────────────────────────────────────
+const DISPLAY_TYPES = ['section', 'instruction', 'image'];
+
 function renderWorksheet(resource, saved) {
   const answers = saved?.answers || {};
   const fields = resource.fields || [{ id: 'notes', label: 'Your notes', type: 'textarea' }];
 
   g('rv-body').innerHTML = fields.map(f => {
+    if (DISPLAY_TYPES.includes(f.type)) {
+      return fieldInput(f, '');
+    }
     const val = answers[f.id] || '';
     return `<div class="ws-field">
       <label class="ws-label">${esc(f.label)}</label>
@@ -173,6 +178,17 @@ function renderWorksheet(resource, saved) {
 }
 
 function fieldInput(f, val) {
+  if (f.type === 'section') {
+    return `<div class="ws-section-heading">${esc(f.label)}</div>`;
+  }
+  if (f.type === 'instruction') {
+    return `<div class="ws-instruction">${esc(f.label)}</div>`;
+  }
+  if (f.type === 'image') {
+    return f.label
+      ? `<div class="ws-image-wrap"><img src="${f.label}" alt="" class="ws-image" onerror="this.closest('.ws-image-wrap').style.display='none'"></div>`
+      : '';
+  }
   if (f.type === 'textarea') {
     return `<textarea data-field="${f.id}" rows="4" placeholder="Write your answer here…">${esc(val)}</textarea>`;
   }

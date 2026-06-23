@@ -639,6 +639,38 @@ input,textarea,select,button { font-family: var(--font-body); font-size: 1rem; }
 .empty-state h3 { font-size: 1.125rem; color: var(--dark-mid); margin-bottom: 8px; }
 .empty-state p { font-size: 0.875rem; max-width: 300px; margin: 0 auto; line-height: 1.6; }
 
+/* ── Worksheet display blocks (section, instruction, image) ── */
+.ws-section-heading {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--rose-dark);
+  margin: 36px 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--rose-light);
+}
+.ws-section-heading:first-child { margin-top: 0; }
+
+.ws-instruction {
+  font-size: 0.9375rem;
+  color: var(--dark-mid);
+  line-height: 1.65;
+  margin-bottom: 20px;
+  background: var(--blue-light);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--blue);
+  white-space: pre-wrap;
+}
+
+.ws-image-wrap {
+  margin-bottom: 24px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.ws-image { width: 100%; height: auto; display: block; }
+
 /* ── Divider ── */
 .divider { height: 1px; background: var(--border); margin: 24px 0; }
 

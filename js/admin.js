@@ -466,10 +466,13 @@ window.setResourceType = (type) => {
 };
 
 // ── Worksheet field builder ───────────────────────────────────
-window.addWorksheetField = () => {
-  wsFields.push({ id: `field_${Date.now()}`, label: '', type: 'textarea' });
+const DISPLAY_TYPES = ['section', 'instruction', 'image'];
+
+window.addWsItem = (type = 'textarea') => {
+  wsFields.push({ id: `field_${Date.now()}`, label: '', type });
   renderWsFields();
 };
+window.addWorksheetField = () => addWsItem('textarea');
 
 window.removeWsField = (index) => {
   wsFields.splice(index, 1);
@@ -483,22 +486,52 @@ window.updateWsField = (index, key, value) => {
 function renderWsFields() {
   const el = g('ws-fields-list');
   if (!wsFields.length) {
-    el.innerHTML = '<p class="text-sm text-muted mb-4">No questions added yet — students will get a free-write area by default.</p>';
+    el.innerHTML = '<p class="text-sm text-muted mb-4">No content yet — use the buttons above to build your worksheet.</p>';
     return;
   }
-  el.innerHTML = wsFields.map((f, i) => `
-    <div class="field-row">
-      <input type="text" placeholder="Question or prompt…" value="${esc(f.label)}" oninput="updateWsField(${i},'label',this.value)">
-      <select onchange="updateWsField(${i},'type',this.value)">
-        <option value="textarea" ${f.type==='textarea'?'selected':''}>Long answer</option>
-        <option value="text" ${f.type==='text'?'selected':''}>Short answer</option>
-        <option value="checkbox" ${f.type==='checkbox'?'selected':''}>Checkbox</option>
-        <option value="rating" ${f.type==='rating'?'selected':''}>Rating (1–5)</option>
+
+  const placeholders = {
+    textarea:    'Question or prompt…',
+    text:        'Question or prompt…',
+    checkbox:    'Checkbox label…',
+    rating:      'Rating question…',
+    section:     'Section heading text…',
+    instruction: 'Instruction or description text…',
+    image:       'Paste image URL here (right-click your Canva design → Copy image address)…',
+  };
+
+  el.innerHTML = wsFields.map((f, i) => {
+    const isDisplay = DISPLAY_TYPES.includes(f.type);
+    const rowStyle = isDisplay ? 'background:var(--blue-light);border-color:var(--blue-light);' : '';
+    const typeLabel = { section:'Heading', instruction:'Text Block', image:'Image URL', textarea:'Long answer', text:'Short answer', checkbox:'Checkbox', rating:'Rating (1–5)' }[f.type] || f.type;
+
+    return `<div class="field-row" style="${rowStyle}">
+      <div style="display:flex;gap:6px;align-items:center;grid-column:1;">
+        <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--blue-dark);white-space:nowrap;${isDisplay?'':'display:none;'}">${typeLabel}</span>
+        <input type="${f.type === 'image' ? 'url' : 'text'}"
+               placeholder="${placeholders[f.type] || 'Content…'}"
+               value="${esc(f.label)}"
+               oninput="updateWsField(${i},'label',this.value)"
+               style="flex:1;">
+      </div>
+      <select onchange="updateWsField(${i},'type',this.value);renderWsFields();" style="grid-column:2;">
+        <optgroup label="Fillable">
+          <option value="textarea"    ${f.type==='textarea'   ?'selected':''}>Long answer</option>
+          <option value="text"        ${f.type==='text'       ?'selected':''}>Short answer</option>
+          <option value="checkbox"    ${f.type==='checkbox'   ?'selected':''}>Checkbox</option>
+          <option value="rating"      ${f.type==='rating'     ?'selected':''}>Rating (1–5)</option>
+        </optgroup>
+        <optgroup label="Layout">
+          <option value="section"     ${f.type==='section'    ?'selected':''}>Heading</option>
+          <option value="instruction" ${f.type==='instruction'?'selected':''}>Text Block</option>
+          <option value="image"       ${f.type==='image'      ?'selected':''}>Image URL</option>
+        </optgroup>
       </select>
-      <button class="btn btn-ghost btn-icon" onclick="removeWsField(${i})" title="Remove">
+      <button class="btn btn-ghost btn-icon" onclick="removeWsField(${i})" title="Remove" style="grid-column:3;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── Save Resource ────────────────────────────────────────────
