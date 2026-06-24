@@ -802,16 +802,16 @@ window.loadCanvasImage = () => {
 function setupOverlayClickHandler() {
   const container = g('canvas-editor-container');
   if (!container) return;
-  const handler = (e) => {
+  // Use onclick= so re-loading the image replaces the handler rather than stacking
+  container.onclick = (e) => {
     if (e.target.closest('.overlay-marker')) return;
-    const rect = container.getBoundingClientRect();
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
     const x = +((( e.clientX - rect.left) / rect.width)  * 100).toFixed(2);
     const y = +((( e.clientY - rect.top)  / rect.height) * 100).toFixed(2);
     wsOverlays.push({ id: `f_${Date.now()}`, x, y, width: 28, label: `Field ${wsOverlays.length + 1}` });
     renderOverlayEditor();
   };
-  container.replaceWith(container.cloneNode(true)); // remove old listeners
-  g('canvas-editor-container').addEventListener('click', handler);
 }
 
 function renderOverlayEditor() {
